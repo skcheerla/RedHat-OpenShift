@@ -1,6 +1,7 @@
 # How to Deploy Application on OpenShift via CLI 
 
-Commands --
+## Commands --  
+
 oc new-project chapter1  
 
 oc new-app --name hello --image quay.io/redhattraining/hello-world-nginx:v1.0  
