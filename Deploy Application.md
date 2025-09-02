@@ -15,6 +15,9 @@ oc expose service hello
 
 oc get all  
 
+<img width="837" height="290" alt="image" src="https://github.com/user-attachments/assets/67291901-6f0c-41bf-aff0-3f6fcebfb1d1" />
+
+
 oc get pod -o wide  
 
 oc scale --replicas 4 deployment/hello  
