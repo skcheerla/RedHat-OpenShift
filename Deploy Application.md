@@ -4,6 +4,10 @@
 
 oc new-project chapter1  
 
+podman pull quay.io/redhattraining/todo-angular
+
+docker pull quay.io/redhattraining/todo-angular
+
 oc new-app --name hello1 quay.io/redhattraining/todo-angular
 
 oc new-app --name hello --image quay.io/redhattraining/hello-world-nginx:v1.0  
