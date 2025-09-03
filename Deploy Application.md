@@ -21,6 +21,10 @@ oc get all
 <img width="822" height="373" alt="image" src="https://github.com/user-attachments/assets/97caca60-5064-4de9-84e0-ad10640d15ec" />
 
 
+<img width="852" height="440" alt="image" src="https://github.com/user-attachments/assets/8fcd06d4-d9b3-4f56-a8cf-98ae17d73e3b" />
+
+
+
 
 oc get pod -o wide  
 
