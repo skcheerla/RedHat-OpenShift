@@ -2,6 +2,11 @@
 
 ## Commands --  
 
+
+oc new-app --name my-nginx registry.redhat.io/nginxinc/nginx-unprivileged 
+
+
+
 oc new-project chapter1  
 
 podman pull quay.io/redhattraining/todo-angular
