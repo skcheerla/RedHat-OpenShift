@@ -64,3 +64,63 @@ For a comprehensive list of commands and their options, you can use the built-in
 
 * **`oc --help`**: Get a list of all top-level commands.
 * **`oc <command> --help`**: Get help for a specific command, e.g., `oc new-app --help`.
+* 
+
+
+
+
+
+1️⃣ Log in to the OpenShift internal registry
+	1.	Get your registry URL:
+
+oc get route default-route -n openshift-image-registry
+
+	•	Usually it’s like default-route-openshift-image-registry.apps.<cluster-domain>
+
+	2.	Log in using podman or docker (depending on your local setup):
+
+docker login -u $(oc whoami) -p $(oc whoami -t) <registry-url>
+
+	•	oc whoami -t generates your OpenShift token automatically.
+
+⸻
+
+2️⃣ Tag your local image for the OCP registry
+
+Suppose you built your image locally:
+
+docker build -t nginx-app:updated .
+
+Tag it for OpenShift registry:
+
+docker tag nginx-app:updated <registry-url>/<project>/<image-name>:<tag>
+
+Example:
+
+docker tag nginx-app:updated default-route-openshift-image-registry.apps.ocp.example.com/myproject/nginx-app:v2
+
+	•	<project> → your OpenShift project/namespace
+	•	<tag> → version (e.g., v2)
+
+⸻
+
+3️⃣ Push the image to OpenShift registry
+
+docker push <registry-url>/<project>/<image-name>:<tag>
+
+	•	OpenShift internal registry will store the image.
+
+⸻
+
+4️⃣ Update your Deployment in OpenShift
+
+Point your deployment to the new image:
+
+oc set image deployment/<deployment-name> nginx=<registry-url>/<project>/<image-name>:<tag>
+
+	•	Check rollout:
+
+oc rollout status deployment/<deployment-name>
+oc get pods
+
+
