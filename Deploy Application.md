@@ -5,9 +5,11 @@
 
 oc new-app --name my-nginx registry.redhat.io/nginxinc/nginx-unprivileged 
 
-oc new-app --name my-postgres docker.io/library/postgres:15
-
-
+# Deploy the PostgreSQL image with a name and set environment variables.
+oc new-app --name my-postgres --docker-image docker.io/library/postgres:15 \
+  -e POSTGRES_USER=myuser \
+  -e POSTGRES_PASSWORD=mypassword \
+  -e POSTGRES_DB=mydb
 
 oc new-project chapter1  
 
