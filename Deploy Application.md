@@ -36,7 +36,8 @@ oc get pod -o wide
 
 oc scale --replicas 4 deployment/hello  
 
-<img width="827" height="253" alt="image" src="https://github.com/user-attachments/assets/b4c3bf16-de10-43ed-ad28-a81b0be1a60e" />
+<img width="827" height="455" alt="image" src="https://github.com/user-attachments/assets/2d269218-0f66-4ec1-bc0d-c9cd7f723b35" />
+
 
 
 
