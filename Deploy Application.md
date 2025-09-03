@@ -5,6 +5,14 @@
 
 oc new-app --name my-nginx registry.redhat.io/nginxinc/nginx-unprivileged 
 
+# Deploy the Node.js image with a custom command
+oc new-app --name my-nodejs-app --docker-image docker.io/library/node:18 \
+  --entrypoint /bin/bash \
+  -- sh -c 'echo "Hello from OpenShift!" > /tmp/index.html && http-server /tmp'
+
+# Expose the application to the internet
+oc expose service my-nodejs-app --port 8080
+
 # Deploy the PostgreSQL image with a name and set environment variables.
 oc new-app --name my-postgres --docker-image docker.io/library/postgres:15 \
   -e POSTGRES_USER=myuser \
