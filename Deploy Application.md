@@ -44,5 +44,8 @@ oc scale --replicas 4 deployment/hello
 
 oc delete project chapter1
 
+<img width="822" height="296" alt="image" src="https://github.com/user-attachments/assets/5c809bc4-9093-452b-b974-d9fc38b7eb01" />
+
+
 
 
