@@ -28,6 +28,11 @@ oc get all
 
 oc get pod -o wide  
 
+<img width="828" height="387" alt="image" src="https://github.com/user-attachments/assets/73528c13-602c-4b91-93a6-b2b5961bc110" />
+
+
+
+
 oc scale --replicas 4 deployment/hello  
 
 oc delete project chapter1
