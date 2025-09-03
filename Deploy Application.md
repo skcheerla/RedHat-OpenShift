@@ -5,6 +5,8 @@
 
 oc new-app --name my-nginx registry.redhat.io/nginxinc/nginx-unprivileged 
 
+oc new-app --name my-postgres docker.io/library/postgres:15
+
 
 
 oc new-project chapter1  
