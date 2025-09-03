@@ -30,6 +30,7 @@ oc get pod -o wide
 
 <img width="828" height="387" alt="image" src="https://github.com/user-attachments/assets/73528c13-602c-4b91-93a6-b2b5961bc110" />
 
+<img width="822" height="475" alt="image" src="https://github.com/user-attachments/assets/15b08c81-d49a-459d-be0f-a5d0c20d6c86" />
 
 
 
