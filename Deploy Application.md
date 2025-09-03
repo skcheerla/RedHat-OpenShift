@@ -2,6 +2,8 @@
 
 ## Commands --  
 
+https://claude.ai/chat/94fc82d9-67af-48f7-8620-5f40f521a784
+
 
 oc new-app --name my-nginx registry.redhat.io/nginxinc/nginx-unprivileged 
 
@@ -9,6 +11,15 @@ oc new-app --name my-nginx registry.redhat.io/nginxinc/nginx-unprivileged
 oc new-app --name my-nodejs-app --docker-image docker.io/library/node:18 \
   --entrypoint /bin/bash \
   -- sh -c 'echo "Hello from OpenShift!" > /tmp/index.html && http-server /tmp'
+
+
+  # Deploy the Node.js image with a custom command
+oc new-app --name my-nodejs-app --docker-image docker.io/library/node:18 \
+  --entrypoint /bin/bash \
+  -- sh -c 'echo "Hello from OpenShift!" > /tmp/index.html && http-server /tmp'
+
+# Expose the application to the internet
+oc expose service my-nodejs-app --port 8080
 
 # Expose the application to the internet
 oc expose service my-nodejs-app --port 8080
