@@ -1,10 +1,7 @@
-Got it 👍 Let’s go step by step.
-
 ---
 
 ### 🔹 What is an OpenShift Cluster Operator?
 
-In **Red Hat OpenShift**, an **Operator** is a method of packaging, deploying, and managing a Kubernetes application.
 A **Cluster Operator** is a **special kind of Operator** that manages core platform components of the OpenShift cluster itself.
 
 Think of them as **managers for the cluster’s critical services**—they ensure OpenShift’s infrastructure components are installed, upgraded, healed (self-repaired), and configured correctly.
@@ -96,6 +93,3 @@ Let’s say you add a new identity provider (like LDAP) to OpenShift.
 ✅ **In summary**:
 Cluster Operators are the **brains behind OpenShift’s automation**. They continuously manage, monitor, and repair the platform’s critical components, so administrators don’t need to manually fix every service.
 
----
-
-Do you want me to also **compare Cluster Operators vs Regular Operators** (user-installed ones like databases, Kafka, etc.) so you see the difference more clearly?
