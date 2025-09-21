@@ -147,3 +147,158 @@ EOF
 * Projects come with **default service accounts and bindings**.
 
 ---
+
+
+# Here’s how you can **safely delete the default `kubeadmin` account** from the cluster:
+
+---
+
+## 🔹 1. Make sure another admin user exists
+
+Before deleting, confirm you have a valid user with **`cluster-admin`** privileges. Example:
+
+```bash
+oc adm policy add-cluster-role-to-user cluster-admin myadminuser
+```
+
+Verify:
+
+```bash
+oc whoami
+oc get clusterrolebindings | grep myadminuser
+```
+
+---
+
+## 🔹 2. Delete the `kubeadmin` secret
+
+The `kubeadmin` credentials are stored in a secret in the `kube-system` namespace.
+To delete it:
+
+```bash
+oc delete secret kubeadmin -n kube-system
+```
+
+---
+
+## 🔹 3. Verify removal
+
+Now if someone tries to log in with `kubeadmin`:
+
+```bash
+oc login -u kubeadmin -p <old-password> https://api.<cluster-domain>:6443
+```
+
+…it will **fail** because the secret no longer exists.
+
+---
+
+## 🔹 4. Best Practice
+
+* Do this only **after**:
+
+  * At least one other user (via IDP) is a `cluster-admin`.
+  * You’ve confirmed you can log in with that user.
+* Once deleted, `kubeadmin` **cannot be restored automatically**; you’d need to manually recreate a secret to bring it back.
+
+---
+
+✅ **Summary:**
+
+* Grant `cluster-admin` to a real user.
+* Delete the secret:
+
+  ```bash
+  oc delete secret kubeadmin -n kube-system
+  ```
+* `kubeadmin` login will stop working.
+
+---
+
+Perfect 👍 — let’s go step by step on how to **manually recreate the `kubeadmin` account** in OpenShift if you’ve deleted it.
+
+⚠️ **Note:** The `kubeadmin` user is special — it only works because OpenShift’s authentication operator knows about it during installation. Once deleted, you can simulate it by creating a **new secret** with the same name, but Red Hat officially recommends using an IDP + `cluster-admin` users instead. Still, here’s how to bring it back:
+
+---
+
+## 🔹 1. Generate a password
+
+Pick a strong password or generate one:
+
+```bash
+openssl rand -base64 16
+```
+
+Say the password is:
+
+```
+RedHat@123
+```
+
+---
+
+## 🔹 2. Create the `kubeadmin` secret
+
+Recreate the secret in the `kube-system` namespace:
+
+```bash
+oc create secret generic kubeadmin \
+  -n kube-system \
+  --from-literal=kubeadmin=RedHat@123
+```
+
+---
+
+## 🔹 3. (Optional) Grant `cluster-admin` role
+
+Just to be sure, explicitly bind it (in most cases, OpenShift already treats `kubeadmin` as cluster-admin if the secret exists):
+
+```bash
+oc adm policy add-cluster-role-to-user cluster-admin kubeadmin
+```
+
+---
+
+## 🔹 4. Login with kubeadmin
+
+Now you should be able to log in again:
+
+```bash
+oc login -u kubeadmin -p RedHat@123 https://api.<cluster-domain>:6443
+```
+
+---
+
+## 🔹 5. Verify permissions
+
+Check if it has cluster-admin rights:
+
+```bash
+oc whoami
+oc auth can-i '*' '*' --all-namespaces
+```
+
+You should see:
+
+```
+yes
+```
+
+---
+
+✅ **Summary:**
+
+* Create a new secret:
+
+  ```bash
+  oc create secret generic kubeadmin -n kube-system --from-literal=kubeadmin=<password>
+  ```
+* Bind cluster-admin if needed:
+
+  ```bash
+  oc adm policy add-cluster-role-to-user cluster-admin kubeadmin
+  ```
+* Log in with the new password.
+
+---
+
