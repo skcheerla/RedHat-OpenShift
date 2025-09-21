@@ -20,3 +20,7 @@ In passthrough termination, the OpenShift router doesn't terminate the TLS conne
 * **Pros:** The application maintains full control over its TLS configuration. This is the most secure option for end-to-end encryption because the traffic is never decrypted by an intermediary.
 * **Cons:** Since the router cannot inspect the traffic's HTTP headers, it's unable to perform any Layer 7 routing or load balancing based on HTTP paths or cookies. All routing decisions must be made at Layer 4 (TCP) using SNI.
 * **Use Case:** Necessary for applications that require mutual TLS (mTLS) or when the application needs to handle the certificate directly for custom authentication or a specific protocol.
+
+
+
+<img width="948" height="478" alt="image" src="https://github.com/user-attachments/assets/f229e5c6-c277-4d9b-afa7-d8142bed2abf" />
