@@ -545,6 +545,104 @@ oc rollout latest dc/myapp-dc
 
 ---
 
+Got it! Let’s break this carefully. When you build an app **inside OpenShift**, the images are stored in the **internal OpenShift image registry**, not just anywhere on the nodes.
+
+---
+
+## **1. Where OpenShift stores images**
+
+* OpenShift has an **internal container registry** running inside the cluster.
+* Typically, the registry runs as a pod in the `openshift-image-registry` namespace.
+* The images are stored **inside the registry**, which usually uses **persistent storage** (PVCs) for durability.
+* Images built by **BuildConfigs** are pushed here automatically.
+
+The internal registry URL format looks like:
+
+```
+image-registry.openshift-image-registry.svc:5000/<namespace>/<image-name>:<tag>
+```
+
+Example:
+
+```
+image-registry.openshift-image-registry.svc:5000/myproject/myapp:latest
+```
+
+---
+
+## **2. How to check the images available**
+
+### **A. List ImageStreams in your project**
+
+ImageStreams track all images and tags in a namespace:
+
+```bash
+oc get is
+```
+
+* This shows all ImageStreams in your project/namespace.
+* Each ImageStream contains multiple **tags** (different versions of the image).
+
+---
+
+### **B. List all ImageStreamTags**
+
+```bash
+oc get istag
+```
+
+* Shows all the tags (versions) stored for each ImageStream.
+* Example output:
+
+```
+myapp:latest
+myapp:v1
+myapp:v2
+```
+
+---
+
+### **C. Describe an ImageStream to see the digest**
+
+```bash
+oc describe is myapp
+```
+
+* Shows all tags and the **image digests** they point to.
+* Useful to know which image versions are available.
+
+---
+
+### **D. Check the actual registry pods (optional)**
+
+```bash
+oc get pods -n openshift-image-registry
+```
+
+* Shows the pods running the internal OpenShift registry.
+* You can also access the registry via CLI or API if needed.
+
+---
+
+### **3. Summary**
+
+1. **Images built in OpenShift** → pushed to **internal registry**.
+2. **ImageStreams** track images and tags.
+3. **Commands to see images/tags**:
+
+```bash
+oc get is
+oc get istag
+oc describe is <image-stream>
+```
+
+4. **DeploymentConfigs** usually reference **ImageStream tags**, not the raw image.
+
+---
+
+If you want, I can make a **diagram showing BuildConfig → Internal Registry → ImageStream → DeploymentConfig → Pods**, which makes it very easy to understand where images are stored and how to track them.
+
+Do you want me to make that diagram?
 
 
 
