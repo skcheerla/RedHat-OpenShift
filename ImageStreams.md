@@ -640,9 +640,125 @@ oc describe is <image-stream>
 
 ---
 
-If you want, I can make a **diagram showing BuildConfig → Internal Registry → ImageStream → DeploymentConfig → Pods**, which makes it very easy to understand where images are stored and how to track them.
+Absolutely! In OpenShift, the **internal image registry** stores all images built or pushed into the cluster, and to make them persistent (survive pod restarts or node failures), you need to configure **persistent storage** for it. Let’s go step by step.
+
+---
+
+## **1. Check if internal registry is already using persistent storage**
+
+```bash
+oc get configs.imageregistry.operator.openshift.io cluster -o yaml
+```
+
+* Look for `storage` section in the output.
+* By default, OpenShift may use **emptyDir** (ephemeral storage) if persistent storage is not configured. This is **not recommended for production**.
+
+---
+
+## **2. Configure storage for the internal registry**
+
+OpenShift internal registry is managed by the **ClusterImageRegistry operator**. To configure persistent storage:
+
+### **A. Create a StorageClass (if not already exists)**
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: registry-storage
+provisioner: kubernetes.io/aws-ebs # or your cloud provider / CSI driver
+parameters:
+  type: gp2
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+```
+
+Apply it:
+
+```bash
+oc apply -f storageclass.yaml
+```
+
+---
+
+### **B. Patch the internal registry to use persistent storage**
+
+```bash
+oc patch configs.imageregistry.operator.openshift.io cluster --type=merge -p '{
+  "spec": {
+    "managementState": "Managed",
+    "storage": {
+      "pvc": {
+        "claim": {
+          "metadata": {
+            "name": "registry-pvc"
+          },
+          "spec": {
+            "accessModes": ["ReadWriteOnce"],
+            "resources": {
+              "requests": {
+                "storage": "100Gi"
+              }
+            },
+            "storageClassName": "registry-storage"
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+* `storageClassName` → the StorageClass you created.
+* `storage` → size you want (e.g., 100Gi).
+* OpenShift will create a PVC and mount it to the internal registry pods.
+
+---
+
+### **C. Verify the registry PVC**
+
+```bash
+oc get pvc -n openshift-image-registry
+```
+
+* You should see the PVC created and bound.
+
+---
+
+### **D. Check the registry pod is using the PVC**
+
+```bash
+oc get pods -n openshift-image-registry
+oc describe pod <registry-pod-name> -n openshift-image-registry
+```
+
+* Look under `Volumes` and `VolumeMounts` → should show your PVC.
+
+---
+
+### **3. Notes**
+
+1. **Changing storage after images are already stored:**
+
+   * For existing clusters, you may need to **migrate images** from ephemeral storage to PVC.
+   * Usually, for a fresh setup, configure PVC first.
+
+2. **Cloud vs On-Prem:**
+
+   * In AWS/GCP/Azure, use respective **CSI driver**.
+   * On-prem, use NFS, Ceph, or local PV.
+
+3. **Recommendation:**
+
+   * Always use **persistent storage** in production for internal registry.
+   * Set size according to expected number and size of images.
+
+---
+
+If you want, I can make a **diagram showing the OpenShift internal registry with persistent storage (PVC), ImageStream, DeploymentConfig, and pods**, which makes it easier to visualize.
 
 Do you want me to make that diagram?
+
 
 
 
