@@ -230,8 +230,69 @@ oc describe istag myapp:latest
 
 ---
 
-If you want, I can make a **diagram showing the flow: External Registry → ImageStream import → DeploymentConfig trigger → Admin monitoring** — it makes this much clearer visually.
+Exactly! Let me explain **step by step** how OpenShift handles changes from an external registry when an ImageStream tag is used and automatic deployment is configured:
+
+---
+
+### **Step 1: OpenShift imports ImageStream metadata**
+
+* Every \~15 minutes (default), OpenShift fetches the **metadata** of the external image tag (e.g., `quay.io/myuser/myapp:latest`).
+* This **does not pull the full image yet**, it only retrieves the **digest, size, creation date, labels, etc.**
+
+---
+
+### **Step 2: OpenShift compares digests**
+
+* OpenShift compares the **new digest** from the external registry with the **digest stored in the ImageStream tag**.
+* If the digest **has changed**, OpenShift marks the ImageStream tag as updated.
+
+---
+
+### **Step 3: Update internal ImageStream reference**
+
+* OpenShift updates the **internal ImageStreamTag** with the new digest.
+* This is now the **digested version** that DeploymentConfigs will reference.
+* Example of updated reference:
+
+```
+dockerImageReference: quay.io/myuser/myapp@sha256:123abc...
+```
+
+---
+
+### **Step 4: Trigger Deployment (if configured)**
+
+* If a **DeploymentConfig** has an **ImageChange trigger** linked to this ImageStream tag, OpenShift will:
+
+  1. Detect that the ImageStream tag now points to a **new digest**
+  2. Automatically create a **new replication controller / deployment**
+  3. Pull the actual container image **from the registry** using the new digest
+  4. Replace old pods with new pods running the updated image
+
+* **Important:** The full image is only **downloaded to the node when pods are created**, not during the metadata import.
+
+---
+
+### **Step 5: New pods start running**
+
+* Pods now run the **exact version of the image identified by the digest**.
+* Old pods are scaled down (if rolling deployment) and new pods take over.
+
+---
+
+### ✅ **Key Points**
+
+1. **Metadata import** happens every 15 minutes (or manually triggered).
+2. **Actual image pull** happens only when a DeploymentConfig creates/updates pods.
+3. OpenShift uses **digest tracking** to ensure it deploys the exact version of the image.
+4. Automatic deployment only occurs if **ImageChange triggers** are configured in the DeploymentConfig.
+
+---
+
+If you want, I can make a **diagram showing the full flow**:
+**External Registry → ImageStream metadata import → Digest comparison → DeploymentConfig trigger → Pods updated**.
 
 Do you want me to make that diagram?
+
 
 
