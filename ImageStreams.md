@@ -156,7 +156,82 @@ triggers:
 
 ---
 
-If you want, I can make a **step-by-step diagram showing Quay → ImageStream → DeploymentConfig → Auto Deployment** so you can visualize exactly how version changes trigger deployments.
+Exactly! You’ve spotted an important detail 🙂
+
+OpenShift **does not continuously watch external registries in real time**. Here’s how it works and how an admin knows about external image changes:
+
+---
+
+### **1. How OpenShift “sees” external image changes**
+
+* OpenShift periodically **imports metadata** for ImageStreams that point to external registries.
+* By default, it checks **every 15 minutes** (this is controlled by the cluster’s image import settings).
+* When an ImageStream tag is updated (digest changes), OpenShift updates the tag’s internal metadata.
+
+---
+
+### **2. Methods to detect external changes**
+
+**A. Automatic periodic import (default)**
+
+* OpenShift automatically refreshes external ImageStream tags every 15 minutes.
+* Admins can see changes by checking the ImageStream:
+
+```bash
+oc get is myapp -o yaml
+oc describe is myapp
+```
+
+* You will see the `dockerImageMetadata` and `dockerImageReference` updated if a new digest is detected.
+
+---
+
+**B. Manual import (on-demand)**
+
+* Admins can manually trigger a metadata update from the external registry:
+
+```bash
+oc import-image myapp:latest --confirm
+```
+
+* This fetches the latest digest from Quay, updates the ImageStream, and may trigger deployments if configured.
+
+---
+
+**C. Monitoring external registry directly**
+
+* OpenShift **does not notify automatically** if there’s a new version pushed externally outside of the import interval.
+* If an admin wants **real-time awareness**, they need to:
+
+  1. Use registry webhooks (e.g., Quay webhook to OpenShift)
+  2. Or monitor the registry manually via scripts or UI
+
+---
+
+### **3. Admin visibility**
+
+* Admins can see **when an ImageStream tag’s digest changes** via:
+
+```bash
+oc get istag myapp:latest
+oc describe istag myapp:latest
+```
+
+* This shows the **external image reference** and **when it was last imported**.
+
+---
+
+### ✅ **Summary**
+
+1. OpenShift **doesn’t watch registries in real time**.
+2. ImageStream tags are updated **periodically** or **manually**.
+3. Admins can use `oc import-image` or check `oc describe is` / `oc describe istag` to see updates.
+4. For **real-time external changes**, you need **registry webhooks** or external monitoring.
+
+---
+
+If you want, I can make a **diagram showing the flow: External Registry → ImageStream import → DeploymentConfig trigger → Admin monitoring** — it makes this much clearer visually.
 
 Do you want me to make that diagram?
+
 
