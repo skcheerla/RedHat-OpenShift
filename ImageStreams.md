@@ -289,10 +289,82 @@ dockerImageReference: quay.io/myuser/myapp@sha256:123abc...
 
 ---
 
-If you want, I can make a **diagram showing the full flow**:
-**External Registry → ImageStream metadata import → Digest comparison → DeploymentConfig trigger → Pods updated**.
+Yes! You can check whether a **DeploymentConfig has an ImageChange trigger** for an ImageStream tag using `oc` commands. Here’s how:
 
-Do you want me to make that diagram?
+---
+
+### **1. List DeploymentConfigs**
+
+```bash
+oc get dc
+```
+
+* This shows all DeploymentConfigs in the current namespace.
+
+---
+
+### **2. Describe the DeploymentConfig**
+
+```bash
+oc describe dc <deployment-config-name>
+```
+
+* Look for a section called **Triggers**. Example:
+
+```
+Triggers:
+  Type:   Config, Image
+  Image Change Params:
+    Automatic: true
+    Container Names: myapp-container
+    From:
+      Kind: ImageStreamTag
+      Name: myapp:latest
+```
+
+**What to look for:**
+
+* `Type: Image` → this is an ImageChange trigger
+* `Automatic: true` → OpenShift will automatically deploy when the ImageStream tag changes
+* `From.Kind: ImageStreamTag` → confirms it’s linked to an ImageStream tag
+* `From.Name` → shows which tag (e.g., `myapp:latest`) triggers deployment
+
+---
+
+### **3. Check triggers using `oc get` in YAML**
+
+```bash
+oc get dc <deployment-config-name> -o yaml
+```
+
+* Look for the `triggers` section:
+
+```yaml
+triggers:
+  - type: ImageChange
+    imageChangeParams:
+      automatic: true
+      containerNames:
+        - myapp-container
+      from:
+        kind: ImageStreamTag
+        name: myapp:latest
+```
+
+---
+
+### ✅ **Key Notes**
+
+1. If there’s **no ImageChange trigger**, OpenShift will **not automatically deploy** when the ImageStream tag updates.
+2. If `automatic: false`, the DeploymentConfig **won’t auto-deploy** even if the tag changes—you’d need to manually trigger a rollout:
+
+```bash
+oc rollout latest dc/<deployment-config-name>
+```
+
+---
+
+
 
 
 
