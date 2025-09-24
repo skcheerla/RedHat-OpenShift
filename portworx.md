@@ -103,4 +103,76 @@ Portworx = **Kubernetes-native storage and data management solution** that provi
 
 ---
 
+
+Installing Portworx on an OpenShift cluster generally involves using the **Portworx Enterprise Operator**, which simplifies the deployment and lifecycle management. The specific steps can vary slightly depending on your underlying infrastructure (e.g., AWS, Azure, VMware vSphere, or bare metal).
+
+Here's a general outline of the installation process:
+
+## Prerequisites
+
+Before you begin, ensure your OpenShift cluster meets these requirements:
+
+  * **OpenShift Version:** OpenShift 4.12 or higher is typically required.
+  * **Infrastructure:** Your OpenShift cluster should be deployed on infrastructure that meets Portworx's minimum resource requirements.
+  * **Worker Nodes:** A minimum of three nodes are usually needed to form the Portworx KVDB (key-value database) cluster. Ensure secure boot is disabled on any underlying nodes used for Portworx.
+  * **Disk Types:** You must have supported disk types for Portworx to utilize.
+  * **Cloud-Specific Permissions (if applicable):** If deploying on a public cloud like AWS or Azure, you'll need to create appropriate IAM users or service principals with the necessary permissions for Portworx to manage cloud storage resources.
+  * **Open Ports:** Ensure specific firewall ports are open for node-to-node communication within the Portworx cluster. These typically include TCP ports 17001-17022, 20048, 111, and UDP port 17002, along with NFS traffic on TCP port 2049.
+
+-----
+
+## Installation Steps (General)
+
+1.  **Create a Namespace:** Create a dedicated namespace (e.g., `portworx`) for the Portworx Operator and its components.
+    ```bash
+    oc create namespace portworx
+    ```
+2.  **Install Portworx Enterprise Operator:**
+      * **From OpenShift OperatorHub:** The most common and recommended method is to navigate to the **OperatorHub** in your OpenShift UI, search for "Portworx Enterprise," and click "Install." Select a specific namespace (e.g., `portworx`) for the installation.
+      * **Manual Installation:** If the OperatorHub doesn't have the Portworx Operator available, you might be able to install it using an `oc apply` command with a URL provided by Portworx.
+3.  **Generate Portworx Spec:**
+      * Go to **Portworx Central** (you may need to create an account or log in).
+      * Use the **spec generator tool** to create a custom `StorageCluster` YAML specification. You'll select your product line, platform (e.g., DAS/Cloud, OpenShift 4+), and other configuration details like disk types.
+4.  **Deploy Portworx StorageCluster:**
+      * Once the Operator is installed and shows a "Create StorageCluster" button in the OpenShift UI, click it.
+      * Switch to the **YAML view** and paste the Portworx spec you generated into the text editor.
+      * Click "Create" to deploy Portworx.
+5.  **Verify Installation:**
+      * Monitor the `StorageCluster` status in the OpenShift UI's "Installed Operators" section; it should eventually show "Online" or "Running."
+      * You can also verify the status using `oc` commands:
+        ```bash
+        oc -n portworx get storagecluster
+        oc -n portworx get storagenodes
+        oc exec <portworx-pod-name> -n portworx -- /opt/pwx/bin/pxctl cluster provision-status
+        ```
+      * Once Portworx is deployed, a "Portworx" option should appear in the left pane of the OpenShift UI, allowing you to access its dashboard and manage the cluster.
+6.  **Create a Persistent Volume Claim (PVC):** To provision storage for your applications, create a PVC that references a Portworx StorageClass (e.g., `px-csi-db` which is typically created during installation).
+    ```yaml
+    kind: PersistentVolumeClaim
+    apiVersion: v1
+    metadata:
+      name: px-check-pvc
+    spec:
+      storageClassName: px-csi-db
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+    ```
+    Then apply it: `oc apply -f <your-pvc-name>.yaml`
+
+-----
+
+## Important Considerations:
+
+  * **Cloud-Specific Setup:** If you are deploying on a cloud provider like AWS, Azure, or Google Cloud, there will be additional steps for configuring cloud credentials and opening specific network ports for worker nodes.
+  * **Bare Metal vs. Virtualized:** The disk configuration and setup may differ for bare metal installations compared to virtualized environments like VMware vSphere.
+  * **Security Contexts:** If your applications require non-root access to storage, you'll need to define appropriate security contexts for your pods in your deployment YAML.
+  * **Monitoring and Telemetry:** Portworx can integrate with OpenShift's monitoring and alerting systems; you may need to enable user workload monitoring in the `openshift-monitoring` namespace.
+
+For detailed and up-to-date instructions specific to your OpenShift environment and underlying infrastructure, always refer to the official Portworx documentation.
+
+This video demonstrates how to configure the Portworx Operator for Openshift, and how to install and use a new Portworx cluster using the operator: [Install and Configure using the Portworx Operator](https://www.youtube.com/watch?v=qSPEjeJHvmA).
+http://googleusercontent.com/youtube_content/1
 Do you want me to also compare **Portworx vs PowerMax CSI** in OpenShift (since both provide storage but in different ways)?
