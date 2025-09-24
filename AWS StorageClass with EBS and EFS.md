@@ -105,20 +105,3 @@ EFS is a fully managed NFS service on AWS, which is essential for CI/CD pipeline
 
 -----
 
-### 3\. Multi-Cloud Object Storage (OpenShift Data Foundation) ☁️
-
-OpenShift Data Foundation (ODF) simplifies object storage management by providing a software-defined solution that can federate object storage across clouds. This uses the **NooBaa Multi-Cloud Object Gateway (MCG)**.
-
-**Procedure:**
-
-1.  **Install OpenShift Data Foundation:** The administrator installs the ODF operator from the OpenShift OperatorHub. This operator deploys the necessary components, including Ceph for block/file storage and NooBaa for object storage.
-2.  **Create an AWS S3 BackingStore:** The administrator uses the NooBaa console or `oc` CLI to create a `BackingStore` that points to an AWS S3 bucket. This requires providing AWS credentials (access key ID and secret access key) as a Kubernetes secret.
-      * The `BackingStore` object defines the connection to the external S3 bucket.
-3.  **Create an `ObjectBucketClaim` (OBC):** The developer creates an OBC in their application's manifest. This OBC acts as the "PVC for object storage."
-      * The `storageClassName` is set to `openshift-storage.noobaa.io`, which is automatically created by the ODF operator.
-      * The OBC will trigger NooBaa to create a new S3 bucket (if not using an existing one) and automatically generate credentials for the application.
-4.  **Application Integration:** OpenShift creates a **Secret** and a **ConfigMap** containing the generated credentials (access key, secret key, and endpoint URL) with the same name as the OBC. The application's pod is configured to mount these secrets, allowing it to use any standard S3-compatible SDK to read and write to the object storage. The application code remains the same, providing a consistent, multi-cloud experience.
-
-This video provides an overview of how to manage and protect data with OpenShift Data Foundation.
-
-[Red Hat OpenShift Data Foundation Overview](https://www.google.com/search?q=https://www.youtube.com/watch%3Fv%3DkY613l22k-U)
