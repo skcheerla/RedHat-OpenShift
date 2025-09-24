@@ -1,3 +1,126 @@
+IN simple terms 
+
+. User submits a request
+
+You (or a system) create a pod (or deployment) by sending a request to the Kubernetes API Server.
+
+This request is like: "Hey, I want to run this app."
+
+2. API Server checks everything
+
+The API server:
+
+Authenticates you (checks who you are).
+
+Authorizes you (checks if you are allowed to create this pod).
+
+Checks if there are enough resources available (CPU, memory limits).
+
+Applies security rules and policies.
+
+Injects default settings like secrets, service accounts, node selectors.
+
+Once everything is good, it saves the pod data in etcd (Kubernetes' database).
+
+3. Controllers watch and act
+
+Various controllers watch the pod info stored in etcd:
+
+Deployment controller ensures the desired number of pods are running.
+
+Service Account controller manages access and secrets.
+
+Persistent Volume controller handles storage.
+
+Others manage storage attachment, routing, images, etc.
+
+Controllers constantly check and try to make reality match what you requested.
+
+4. Scheduler picks a node
+
+The scheduler sees new pods that need a place to run.
+
+It checks nodes to find the best fit based on:
+
+Available resources (CPU, memory).
+
+Node taints and pod tolerations.
+
+Affinity (rules about which nodes pods prefer).
+
+Scheduler assigns the pod to a specific node and updates pod info.
+
+5. Kubelet on the node takes over
+
+Each worker node runs a kubelet agent.
+
+Kubelet watches the API server for pods assigned to its node.
+
+It validates pod specs, checks security policies.
+
+Ensures volumes are attached.
+
+Pulls container images (via container runtimes like CRI-O or containerd).
+
+Starts the container(s).
+
+6. Networking and IP allocation
+
+The pod gets an IP address.
+
+Kubernetes sets up routing rules so pods can talk to each other and outside world.
+
+Services and ingress controllers manage how traffic flows to pods.
+
+7. Pod readiness and health checks
+
+Kubelet runs readiness probes (checks if pod is ready to serve traffic).
+
+Runs liveness probes (checks if pod is alive).
+
+When ready, kubelet updates pod status to API server.
+
+Services start sending traffic to ready pods.
+
+8. Pod lifecycle status updates
+
+Pod status is continuously updated and stored in etcd.
+
+Controllers and kubelet react to status changes (restart pods if needed).
+
+
+Extra concepts:
+
+Taints and tolerations: Nodes can be "tainted" to repel pods unless those pods "tolerate" the taint.
+
+Security Context Constraints (SCC): Rules about what pods are allowed to do.
+
+
+
+**Summary (super short):**
+
+You ask Kubernetes to create a pod.
+
+API server validates and saves pod info.
+
+Controllers manage pod objects.
+
+Scheduler picks the best node.
+
+Kubelet on that node runs the pod.
+
+Networking connects the pod.
+
+Health checks run and update status.
+
+Kubernetes manages the pod until deleted.
+
+
+*********************************************************************************
+
+
+
+
 oc new-app
 client submits higher levelobject
 
