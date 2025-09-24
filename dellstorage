@@ -1,0 +1,351 @@
+Key Capabilities & Considerations in v2.x
+
+Before diving into deployment steps, here are some features and prerequisites in the v2.x family which will also apply to v2.14.0:
+
+Dell’s CSI PowerMax driver is installed via the Dell CSM Operator (not via Helm) in newer releases. 
+dell.github.io
++2
+dell.github.io
++2
+
+The driver supports multiple protocols (depending on your setup): FC, iSCSI, NFS, NVMe/TCP. 
+dell.github.io
++1
+
+The driver includes a Reverse Proxy component, which requires TLS secrets and configuration. 
+dell.github.io
++2
+dell.github.io
++2
+
+Logging level is dynamic via a ConfigMap named e.g. powermax-config-params for CSI log adjustments. 
+dell.github.io
+
+Volume Health Monitoring is supported (from v2.2.0 onwards), but in OpenShift clusters some alpha/optional features may be restricted. 
+dell.github.io
++1
+
+Unisphere REST endpoint version requirement: Starting from some v2.x versions, only Unisphere 10.0 REST endpoints are supported. So ensure your storage array’s Unisphere is compatible. 
+dell.github.io
+
+🛠 Steps to Deploy CSI PowerMax v2.14.0 in OpenShift
+
+Here’s a rough step-by-step flow. You may need to adapt to your OpenShift version and environment.
+
+Step	What You Do
+1	Ensure Prerequisites:
+• Nodes must support the chosen protocol (FC, iSCSI, NVMe/TCP)
+• Install multipath / device-mapper-multipath packages if required
+• For iSCSI: ensure iscsid service is enabled on nodes (via MachineConfig in OpenShift) 
+dell.github.io
++1
+
+• Ensure connectivity from nodes to PowerMax (zoning, IPs, routing)
+• TLS certificate / secret for reverse proxy (if used)
+• Prepare credentials for Unisphere (username/password)
+• Ensure that the CSI driver images (on quay.io or allowed registry) are accessible
+2	Install or Enable Dell CSM / CSI Operator
+Use OperatorHub in OpenShift, or via CLI, to install the CSM / CSI Operator that includes PowerMax support. 
+dell.github.io
++1
+
+3	Create Namespace & Secrets
+• Create a namespace (like powermax)
+• Create a Secret powermax-creds containing base64‑encoded username and password for the Unisphere API
+• If TLS for reverse proxy is required, create csirevproxy-tls-secret in that namespace containing tls.crt and tls.key 
+dell.github.io
++2
+dell.github.io
++2
+
+
+
+4	Create or Provide Configuration (ConfigMap / CR)
+• You may need a ConfigMap listing driver parameters (e.g. endpoints, managed arrays, port groups, transport protocol, etc.)
+• In the driver’s CR for PowerMax (a CSIPowerMax or similar custom resource), define parameters:
+  • X_CSI_POWERMAX_ENDPOINT
+  • X_CSI_MANAGED_ARRAYS
+  • X_CSI_TRANSPORT_PROTOCOL (e.g. “FC”, “iSCSI”, “NVMeTCP”, etc.)
+  • Port groups if using iSCSI
+  • TLS/revproxy parameters
+  • Volume prefix, monitor interval, etc.
+• Ensure mount propagation settings are allowed (for device mounts) 
+dell.github.io
++3
+dell.github.io
++3
+dell.github.io
++3
+5	Deploy the PowerMax CR
+Use the custom resource manifest (provided by Dell) to create the PowerMax driver instance. This will spin up controller pods and node plugin pods. 
+dell.github.io
++1
+
+
+
+6	Verify Pods / Operator
+Check in the PowerMax namespace that controller pods and node pods are up and running:
+oc get pods -n powermax
+Ensure no failures, restart loops, etc.
+Also inspect logs of CSI‑PowerMax pods for errors.
+7	StorageClass Creation
+Dell’s operator or the CR should create one or more StorageClass resources configured for PowerMax (one per protocol or policy).
+You may need to edit or annotate these as needed (e.g. reclaimPolicy, volumeBindingMode, allowVolumeExpansion)
+8	Create PVC / Pod
+With the StorageClass in place, create a PersistentVolumeClaim
+Then create a Pod that mounts the PVC to use that storage
+The CSI driver will dynamically provision a LUN/volume on the PowerMax array and bind it.
+
+
+
+9	Testing & Validation
+• Check oc get pvc, oc describe pvc
+• Inside pod, check mount and read/write
+• Test expand (if allowed) and deletion to ensure cleanup happens
+• Monitor logging and metrics
+• Test node failures and reattachment if needed
+10	Ongoing Operations
+• You can change logging via the ConfigMap
+• Monitor health (if health monitoring enabled)
+• If updates or version upgrades required, carefully follow Dell’s upgrade paths
+
+
+
+
+Sample Snippet (Illustrative YAML for CR / Secret)
+
+Here’s a simplified / illustrative example for the secret + CR (you must adapt to v2.14.0 official manifest):
+
+Secret (powermax-creds):
+
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: powermax-creds
+  namespace: powermax
+type: Opaque
+data:
+  username: {{ base64-of-username }}
+  password: {{ base64-of-password }}
+
+
+
+
+Custom Resource (CSIPowerMax or similar):
+
+apiVersion: csi.dellemc.com/v1
+kind: CSIPowerMax
+metadata:
+  name: powermax
+  namespace: powermax
+spec:
+  csiPluginImage: quay.io/dellemc/csi-powermax:v2.14.0
+  reverseProxy:
+    enable: true
+    tlsSecret: csirevproxy-tls-secret
+    port: 2222
+  storage:
+    protocol: iSCSI       # or “FC”, “NVMeTCP” depending on use
+    portGroups: "PG1,PG2"
+  unisphere:
+    endpoint: "https://unisphere.example.com:8443"
+    managedArrays: "000197800123"
+  node:
+    logLevel: "info"
+  controller:
+    logLevel: "info"
+    volumePrefix: "pmax"
+    monitorInterval: "60s"
+
+
+Again, this is illustrative — use Dell’s provided manifest and adjust to your environment.
+
+
+Common Pitfalls / Gotchas to Watch Out For
+
+Mixing Protocols — you typically cannot use FC and iSCSI simultaneously for one driver instance. Stick to one per deployment. 
+infohub.delltechnologies.com
++2
+infohub.delltechnologies.com
++2
+
+Unisphere Version Compatibility — Later driver versions may only support newer Unisphere REST endpoints (e.g. Unisphere 10.x). 
+dell.github.io
+
+Mount Propagation & Device Mounts — Ensure your cluster runtime allows mount propagation needed by CSI drivers. 
+dell.github.io
+
+Reverse Proxy TLS Setup — If the reverse proxy isn’t correctly configured, nodes/controllers may fail to communicate.
+
+Logging & Debugging — Use the dynamic logging ConfigMap to help debug issues.
+
+Volume Expansion / Health Monitoring — Some features may be disabled by default in OpenShift or restricted; need explicit enabling.
+
+Permissions & RBAC — Ensure CSI operator has correct roles and permissions in your cluster.
+
+Node Connectivity — Nodes must reach the storage and must have multipath / pathing properly configured.
+
+Upgrades — Upgrading between driver versions should follow Dell’s documented path to avoid data-loss or breakage.
+
+
+
+Example Manifest for CSI PowerMax v2.14.0 (Operator / CSM-based)
+
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: powermax
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: powermax-creds
+  namespace: powermax
+type: Opaque
+data:
+  username: <BASE64_ENCODED_USERNAME>
+  password: <BASE64_ENCODED_PASSWORD>
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: csirevproxy-tls-secret
+  namespace: powermax
+type: kubernetes.io/tls
+data:
+  tls.crt: <BASE64_CRT>
+  tls.key: <BASE64_KEY>
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: powermax-array-config
+  namespace: powermax
+data:
+  powermax-array-config.yaml: |
+    X_CSI_POWERMAX_PORTGROUPS: ""                # iSCSI only (if applicable)
+    X_CSI_TRANSPORT_PROTOCOL: "iSCSI"            # or "FC", "NVMETCP", or "auto"
+    X_CSI_POWERMAX_ENDPOINT: "https://your-unisphere.example.com:8443"
+    X_CSI_MANAGED_ARRAYS: "000197800123,000197800456"
+    # other optional parameters, e.g. log levels, health monitor, etc.
+
+---
+apiVersion: csi.dellemc.com/v1
+kind: CSIPowerMax
+metadata:
+  name: powermax
+  namespace: powermax
+spec:
+  csiPluginImage: quay.io/dellemc/csi-powermax:v2.14.0
+  reverseProxy:
+    enable: true
+    tlsSecret: csirevproxy-tls-secret
+    port: 2222
+    # If you have a custom service name, set it. Default is often "csipowermax-reverseproxy"
+    serviceName: csipowermax-reverseproxy
+  storage:
+    protocol: iSCSI                         # "iSCSI", "FC", "NVMETCP" (depending on your backend)
+    portGroups: ""                          # if using iSCSI, comma-separated PG(s)
+  unisphere:
+    endpoint: "https://your-unisphere.example.com:8443"
+    managedArrays: "000197800123"
+  controller:
+    logLevel: "info"
+    volumePrefix: "pmax"
+    monitorInterval: "60s"
+  node:
+    logLevel: "info"
+  # You may also enable health monitoring (optional)
+  # e.g.:
+  # healthMonitor:
+  #   enabled: true
+
+---
+# (Optional) A StorageClass if not auto-created
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: powermax-sc
+provisioner: csi-powermax.dellemc.com
+parameters:
+  arrayId: "000197800123"
+  srp: "SRP_1"
+  serviceLevel: "Diamond"
+  fsType: "ext4"
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+
+
+
+
+
+
+
+Key Points & What to Validate / Customize
+
+Namespace — ensure you use a namespace that doesn’t conflict with others.
+
+Secrets — powermax-creds for Unisphere credentials; csirevproxy-tls-secret for TLS between reverse proxy and CSI components. Dell docs require creating TLS secret for the reverse proxy. 
+Dell
++1
+
+ConfigMap (powermax-array-config) — includes the key parameters like X_CSI_TRANSPORT_PROTOCOL, X_CSI_POWERMAX_ENDPOINT, X_CSI_MANAGED_ARRAYS. 
+Dell
++2
+Dell
++2
+
+CSIPowerMax CR fields:
+
+csiPluginImage: ensure it references the v2.14.0 image (Quay or the registry you trust).
+
+Reverse proxy configuration:
+
+Enable or disable depending on your setup.
+
+TLS secret name and port.
+
+Service name if deviating from default.
+
+storage.protocol must match how your PowerMax is exposed (iSCSI, FC, NVMe/TCP). Dell v2.x supports NVMe/TCP (from v2.11 onward) 
+Dell
++1
+
+Health Monitor — optional, and may be disabled by default in operator deployments. If you want volume health monitoring, set the corresponding field (e.g. healthMonitor.enabled: true). 
+Dell
++1
+
+StorageClass — sometimes the operator or CR will auto-create. But in many cases you’ll declare one. You need to match the provisioner name and parameters suitable for your backend.
+
+Topology / node-label support — if your cluster and storage are topology-aware, volumes may get provisioned only in nodes that have access to the array. 
+Dell
++2
+Dell
++2
+
+Mount propagation, multipath, node prerequisites — ensure nodes have required packages (e.g. iscsi-initiator-utils, nvme-cli, multipath-tools), and mount propagation is enabled. 
+Dell
++1
+
+RBAC / Operator permissions — the CSM / CSI operator must have correct cluster roles & permissions. Dell’s operator handles this part. 
+Dell
++1
+
+Version compatibility — ensure v2.14.0 is supported by your OpenShift version, and your Unisphere REST API version is compatible.
+
+Reverse proxy TLS / certificate validation — if X_CSI_POWERMAX_SKIP_CERTIFICATE_VALIDATION is false, you need valid certs and powermax-certs secret. 
+Dell
++1
+
+If you like, I can check if someone has already packaged a GitHub repo with the exact v2.14.0 manifest and share a link with you, including validation steps for your specific OpenShift version (4.17). Do you want me to dig that?
+
+
+
