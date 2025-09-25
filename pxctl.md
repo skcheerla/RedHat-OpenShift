@@ -1,3 +1,126 @@
+*****************************************************************
+
+📄 Step 1: Create portworx-share StorageClass YAML
+
+Create a file called portworx-share.yaml:
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: portworx-share
+provisioner: pxd.portworx.com
+parameters:
+  sharedv4: "true"
+  repl: "2"              # Optional: adjust replication factor
+  fs: "ext4"             # Or "xfs"
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+
+📥 Step 2: Apply the StorageClass in OpenShift
+oc apply -f portworx-share.yaml
+
+
+Verify:
+
+oc get storageclass portworx-share
+
+oc get storageclass portworx-share
+NAME             PROVISIONER        RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+portworx-share   pxd.portworx.com   Delete          Immediate           true                   2m3s
+
+
+
+📦 Step 3: Create a PVC Using portworx-share
+
+Save this as shared-pvc.yaml:
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName:
+
+
+
+
+oc apply -f shared-pvc.yaml
+
+
+# oc new-app --name=balanewapp1 --image=image-registry.openshift-image-registry.svc:5000/testing-oc-jsr/my-nginx-jsr
+warning: Cannot find git. Ensure that it is installed and in your path. Git is required to work with git repositories.
+--> Found container image 8f7427a (3 weeks old) from image-registry.openshift-image-registry.svc:5000 for "image-registry.openshift-image-registry.svc:5000/testing-oc-jsr/my-nginx-jsr"
+
+    * An image stream tag will be created as "balanewapp1:latest" that will track this image
+
+--> Creating resources ...
+    imagestream.image.openshift.io "balanewapp1" created
+    deployment.apps "balanewapp1" created
+    service "balanewapp1" created
+--> Success
+    Application is not exposed. You can expose services to the outside world by executing one or more of the commands below:
+     'oc expose service/balanewapp1'
+    Run 'oc status' to view your app.
+
+ 
+ #oc set volume deployment/balanewapp1 \
+  --add \
+  --name=shared-vol \
+  --claim-name=shared-pvc \
+  --mount-path=/usr/share/nginx/html
+deployment.apps/balanewapp1 volume updated
+
+
+To verify
+
+to getinto ruinning pod
+#oc get pods
+#oc rsh balanewapp1-7c7d6b9774-mm6pv
+
+
+Create Content in the Shared Volume
+
+Once inside the container:
+
+cd /usr/share/nginx/html
+echo "<h1>Hello from shared PVC!</h1>" > index.html
+
+
+oc expose service balanewapp1
+
+oc get route
+
+http://balanewapp1-testing-oc-jsr.apps.ocp.yourdomain.com
+
+
+you should see 
+Hello from shared PVC!
+
+
+
+Test Shared Volume Behavior (Optional)
+
+You can scale the deployment to multiple pods:
+
+#oc scale deployment balanewapp1 --replicas=2
+
+
+Then rsh into the second pod, check the same /usr/share/nginx/html directory — you’ll see the same index.html file. This proves the Portworx RWX shared volume is working correctly.
+
+
+
+
+
+
+****************************************************************
+
+
 To find a Portworx daemonset pod:
 
 oc -n portworx get pods -l name=portworx
