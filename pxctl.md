@@ -1,3 +1,89 @@
+To find a Portworx daemonset pod:
+
+oc -n portworx get pods -l name=portworx
+
+login to the pod like below
+
+oc exec -it -n portworx px-cluster-38bfc7c4-8hjjhvbhjvjhvjhvjhv-bq2fl -- /bin/sh
+
+sh-5.1# pxctl status
+Status: PX is operational
+
+#pxctl service pool show
+
+ Size: 2.0 TiB
+        Status: Online
+        Has metadata:  Yes
+        Drives:
+        1: /dev/mapper/mpathbj, Total size 2.0 TiB, Online
+        Cache Drives:
+        No Cache drives found in this pool
+
+
+
+        StorageClasses Are Just Policy Templates
+
+Kubernetes StorageClasses in Portworx don’t define storage capacity limits. They define:
+
+Replication factors
+
+Encryption settings
+
+Snapshot policies
+
+Shared volume support
+
+Volume size settings (defaults)
+
+File system type (fs)
+
+IO profile (io_profile)
+
+etc.
+
+They do not carve out dedicated quotas or slices of total storage.
+
+
+
+📌 Example:
+
+If a Portworx node has 1 TB of available storage, then:
+
+Volumes created via px-csi-db
+
+Volumes created via px-csi-replicated
+
+Volumes created via px-csi-db-encrypted
+
+…will all consume storage from that same 1 TB pool — based on the volume size requested by the PVC.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Good catch 👍 — you won’t see `/opt/pwx/bin/pxctl` on a normal OpenShift node or your workstation.
 That binary lives **inside the Portworx container** (because Portworx runs as a DaemonSet on worker nodes).
 
@@ -65,80 +151,3 @@ Portworx also provides a **kubectl/oc plugin** called `pxctl` (sometimes install
 ---
 
 Do you want me to also give you a **pure OpenShift way** (using `oc describe storagecluster` or `oc get pxstoragecluster` CRD) so you can check capacity without entering the pod?
-
-
-Excellent question 👌 — let’s break it down step by step:
-
----
-
-## 🔹 Where does Portworx capacity come from?
-
-* Yes ✅, the **capacity you see in `pxctl status`** is based on the **raw block devices (disks) attached to each node** in your OpenShift cluster.
-* When you install Portworx, you tell it **which disks to use** (for example `/dev/sdb`, `/dev/nvme1n1`, etc.).
-* Portworx then **claims** these disks and manages them as **storage pools**.
-
----
-
-## 🔹 How Portworx consumes the raw disks
-
-1. **Disk Pooling**
-
-   * On each node, Portworx aggregates one or more raw disks into a **storage pool**.
-   * Example:
-
-     * Node1 has `/dev/sdb` (500 GB)
-     * Node2 has `/dev/sdb` (500 GB)
-     * Node3 has `/dev/sdb` (500 GB)
-       → Portworx builds a **500 GB pool per node** and then forms a **cluster-wide pool (1500 GB)**.
-
-2. **Abstraction**
-
-   * Applications don’t access raw disks directly.
-   * Instead, they request **PVCs (Persistent Volume Claims)** in OpenShift.
-   * Portworx dynamically provisions PVs from its storage pool.
-
-3. **Replication & Fault Tolerance**
-
-   * If you request a volume with replication (e.g. `repl=3`), Portworx will store **3 copies of the data** across 3 different nodes.
-   * That means although raw disk shows 1500 GB, your **usable storage** depends on the replication factor.
-
-     * With `repl=3`, 1500 GB raw → ~500 GB usable.
-     * With `repl=2`, 1500 GB raw → ~750 GB usable.
-
-4. **Features**
-
-   * Thin provisioning: Volumes are allocated on-demand, not fully reserved.
-   * Snapshots, encryption, and tiering are supported, all from the same raw disk pools.
-
----
-
-## 🔹 To check raw vs Portworx pools
-
-Inside a Portworx pod:
-
-```bash
-pxctl cluster list             # Shows raw disk pools and capacities per node
-pxctl storage pool show        # Details of each pool (raw disks inside)
-```
-
-Example:
-
-```
-Pool ID  Node   Disks         Size   Used
-1        node1  /dev/sdb      500G   100G
-2        node2  /dev/sdb      500G   120G
-3        node3  /dev/sdb      500G   80G
-```
-
----
-
-✅ **Summary**:
-
-* Capacity comes from **raw disks attached to nodes**.
-* Portworx **consumes entire raw block devices**, builds **storage pools**, and manages replication, thin provisioning, and volume lifecycle.
-* The **usable capacity** depends on replication and pool configuration, not just the raw sum of disks.
-
----
-
-Do you want me to also explain how you can **see which raw disks Portworx is using in your cluster** (via CRDs like `StorageCluster` and `pxctl`)?
-
